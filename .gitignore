@@ -3,3 +3,7 @@
 **/__pycache__/*
 .mm/
 *.json
+
+
+temp*
+config*
