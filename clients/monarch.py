@@ -13,7 +13,9 @@ class MonarchClient(object):
         self.email = email
         self.password = password
 
-        await self.client.login(self.email, self.password)
+        await self.client.interactive_login()
+        # await self.client.login(self.email, self.password)
+        # await self.client.login(self.email, self.password, save_session=False, use_saved_session=False, mfa_secret_key="""xemxdvsljzggrla3vwr3xke75mtmlof6jsn6cghtnnr6eqiif6jtsivibj3heg4eudbgyfd6""")
         self.categories = (await self.client.get_transaction_categories())['categories']
         self.reimbursements_category_id = next(
             (c for c in self.categories if c['name'] == 'Reimbursements'))['id']
