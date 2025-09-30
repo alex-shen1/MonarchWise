@@ -7,15 +7,12 @@ EXCLUDED_TRANSACTIONS_PATH = 'excluded.json'
 
 class MonarchClient(object):
     @classmethod
-    async def create(cls, email, password):
+    async def create(cls, email, password, mfa_secret_key):
         self = cls()
         self.client = MonarchMoney()
-        self.email = email
-        self.password = password
 
-        await self.client.interactive_login()
-        # await self.client.login(self.email, self.password)
-        # await self.client.login(self.email, self.password, save_session=False, use_saved_session=False, mfa_secret_key="""xemxdvsljzggrla3vwr3xke75mtmlof6jsn6cghtnnr6eqiif6jtsivibj3heg4eudbgyfd6""")
+        await self.client.login(email=email, password=password, mfa_secret_key=mfa_secret_key)
+
         self.categories = (await self.client.get_transaction_categories())['categories']
         self.reimbursements_category_id = next(
             (c for c in self.categories if c['name'] == 'Reimbursements'))['id']
