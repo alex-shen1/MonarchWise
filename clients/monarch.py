@@ -11,7 +11,7 @@ class MonarchClient(object):
         self = cls()
         self.client = MonarchMoney()
 
-        await self.client.login(email=email, password=password, mfa_secret_key=mfa_secret_key)
+        await self.client.login(email=email, password=password, mfa_secret_key=mfa_secret_key, use_saved_session=False)
 
         self.categories = (await self.client.get_transaction_categories())['categories']
         self.reimbursements_category_id = next(
@@ -45,14 +45,16 @@ class MonarchClient(object):
             if amount in splitwise_expenses.keys():
                 splitwise_expense = splitwise_expenses[amount]
 
-                monarch_id = txn['id']
+                monarch_txn_id = txn['id']
                 txn_hash = hashlib.sha256(
-                    monarch_id.encode('utf-8')).hexdigest()
+                    monarch_txn_id.encode('utf-8')).hexdigest()
 
                 if txn_hash not in excluded:
+                    print(txn)
                     monarch_merchant = txn['merchant']['name']
                     original_category = txn['category']['id']
                     reimbursement = splitwise_expense['amount_reimbursed']
+                    tag_ids = [tag['id'] for tag in txn['tags']]
 
                     split_data = [
                         {
@@ -77,7 +79,16 @@ class MonarchClient(object):
                         response = input()
                         if response.lower() == 'y':
                             valid_response = True
-                            print(await self.client.update_transaction_splits(monarch_id, split_data))
+                            await self.client.update_transaction_splits(monarch_txn_id, split_data)
+                            print()
+                            x = await self.client.get_transaction_splits(monarch_txn_id)
+                            print(type(x))
+                            print(x)
+                            splits = x['getTransaction']['splitTransactions']
+                            print(splits)
+                            for split in splits:
+                                split_txn_id = split['id']
+                                await self.client.set_transaction_tags(split_txn_id, tag_ids)
                         elif response.lower() == 'n':
                             valid_response = True
                             print('Transaction has been marked as excluded.')
