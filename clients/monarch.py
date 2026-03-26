@@ -82,7 +82,6 @@ class MonarchClient(object):
                             await self.client.update_transaction_splits(monarch_txn_id, split_data)
                             print()
                             x = await self.client.get_transaction_splits(monarch_txn_id)
-                            print(type(x))
                             print(x)
                             splits = x['getTransaction']['splitTransactions']
                             print(splits)
