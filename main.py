@@ -21,6 +21,7 @@ try:
     MONARCH_ACCOUNT_ID = os.environ['MONARCH_ACCOUNT_ID']
 except:
     MONARCH_ACCOUNT_ID = None
+LOCAL_TIMEZONE = os.environ['LOCAL_TIMEZONE']
 
 
 def update_env_variable(key, value):
@@ -40,13 +41,15 @@ def update_env_variable(key, value):
             file.write(f"\n{key}={value}\n")
 
 async def main():
-    s = SplitwiseClient(SPLITWISE_KEY, SPLITWISE_SECRET, SPLITWISE_API_KEY)
+    s = SplitwiseClient(SPLITWISE_KEY, SPLITWISE_SECRET, SPLITWISE_API_KEY, LOCAL_TIMEZONE)
     splitwise_expenses = s.get_expenses(SPLITWISE_UPDATED_AFTER)
     # updates the dated_after variable in the .env file as an time enhancement for multiple runs
-    update_env_variable('SPLITWISE_UPDATED_AFTER', '"' + (date.today() - timedelta(days=5)).isoformat() + '"')
+    
     
     m = await MonarchClient.create(MONARCH_EMAIL, MONARCH_PASSWORD, MONARCH_UUID)
-    expense_details = await m.new_find_matches(splitwise_expenses, MONARCH_ACCOUNT_ID)
+    expense_details = await m.new_find_matches(splitwise_expenses, MONARCH_ACCOUNT_ID, start_date=SPLITWISE_UPDATED_AFTER)
+
+    update_env_variable('SPLITWISE_UPDATED_AFTER', '"' + (date.today() - timedelta(days=5)).isoformat() + '"')
 
 
 asyncio.run(main())

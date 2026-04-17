@@ -1,20 +1,26 @@
 import logging
 import datetime
+from zoneinfo import ZoneInfo
 from splitwise import Splitwise
+from splitwise.exception import SplitwiseNotAllowedException
 from functools import lru_cache
+import re
 # logging.basicConfig(level=logging.DEBUG)
 
 
 class SplitwiseClient:
-    def __init__(self, key, secret, api_key):
+    def __init__(self, key, secret, api_key, local_timezone):
         self.client = Splitwise(key, secret, api_key=api_key)
-        self.client.getExpenses
         self.clientUserId = self.client.getCurrentUser().getId()
+        self.local_timezone = local_timezone
 
     @lru_cache
     def _get_name(self, id):
-        user = self.client.getUser(id)
-        # print(f'{user.first_name}{f" {user.last_name}" if user.last_name else ""} is {id}')
+        try:
+            user = self.client.getUser(id)
+        except SplitwiseNotAllowedException as e:
+            logging.warning(f"Not allowed to access user {id}.  Setting user first name to 'unknown'': {e}")
+            return 'unknown'
         return f'{user.first_name}{f" {user.last_name}" if user.last_name else ""}'
 
     def get_groups(self):
@@ -42,11 +48,12 @@ class SplitwiseClient:
         for expense in expenses_data:
             '''
             Remove unwanted expenses
-            Unwanted expenses are settle ups or expenses that do not involve the client user
+            Unwanted expenses are deleted, settle ups or expenses that do not involve the client user
             '''
+            if expense.deleted_at is not None:
+                continue
             if expense.payment == True:
                 continue     
-                   
             try:
                 if expense.repayments[0].toUser == self.clientUserId:
                     continue
@@ -62,9 +69,13 @@ class SplitwiseClient:
             '''
             End remove unwanted expenses
             '''
-            
-            dt = datetime.datetime.strptime(expense.date, "%Y-%m-%dT%H:%M:%SZ")
-            formatted_date = dt.date().isoformat()
+            # Find timestamp of purchase.  First search in description.  If not found, use splitwise entry date
+            match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})", expense.description)
+            if match:
+                dt = datetime.datetime.strptime(match.group(1), "%Y-%m-%d").replace(tzinfo=ZoneInfo(self.local_timezone))
+            else:
+                dt = datetime.datetime.strptime(expense.date, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=ZoneInfo("UTC"))
+            # formatted_date = dt.date().isoformat()
 
             # Possible future upgrade where transactions that were added by you into SW would be added
             # Removed for now as it conflicts with Monarch to SW integration
@@ -87,12 +98,13 @@ class SplitwiseClient:
             expenses.append({
                 'total_cost': cost,
                 'description': expense.description,
-                'date': formatted_date,
+                'date': dt,
                 'amount_owed': amount_owed,
                 # 'amount_reimbursed': amount_reimbursed
                 'group_id': group_id,
                 'group_name': group_name,
-                'id': expense.id
+                'id': expense.id,
+                'paid_to': paid_to
             })
 
-        return expenses
+        return reversed(expenses)

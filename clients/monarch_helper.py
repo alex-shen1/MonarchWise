@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import time
+from datetime import date
 
 async def login(mm, credentials, uuid):
     try:
@@ -44,8 +45,11 @@ def print_transactions(transactions):
         print('\n')
 
     
-async def get_transactions(mm, includeTags=[], excludeTags=[], limit=100, ignorePending=False, synced_from_institution = None):
-    transactions = await mm.get_transactions(tag_ids=includeTags, limit=limit, synced_from_institution=synced_from_institution)
+async def get_transactions(mm, includeTags=[], excludeTags=[], limit=100000, ignorePending=False, synced_from_institution=None, start_date=None, end_date=None):
+    if start_date and not end_date:
+        end_date = date.today().isoformat()
+    
+    transactions = await mm.get_transactions(tag_ids=includeTags, limit=limit, synced_from_institution=synced_from_institution, start_date=start_date, end_date=end_date)
     
     for transaction in transactions['allTransactions']['results'][:]:
         
